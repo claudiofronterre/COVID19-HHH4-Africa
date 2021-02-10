@@ -123,9 +123,9 @@ ui <- fluidPage(
         ),
         selected = "Pop2020"
       ),
-      checkboxGroupInput("countries",
+      selectInput("countries",
                          "Countries",
-                         md$name, selected = "Algeria"),
+                         md$name, selected = "Algeria", multiple=TRUE),
     ),
     
     # Show a plot of the generated distribution
@@ -163,11 +163,7 @@ ui <- fluidPage(
         st_coordinates(md$geom[is.element(md$name,input$countries)]) 
         }
       })
-      
-      #This is called within the observer that changes the layer
-      color_map <- reactive({
-        inputmapping[is.element(inputmapping[,1],input$layer),3]
-      })
+ 
  
      
       #For changes in country checkbox, resize the map (WORKS!)
@@ -184,20 +180,25 @@ ui <- fluidPage(
       
       #For changes in layer, update the colors, labels, and legend (legend not implemented yet)
       observe({
-        ##Eventually want to do this
         lidx <- which(colnames(md)==input$layer)
         
-        browser()
-        pal <- colorQuantile(palette = "RdYlBu", n = min(c(10,length(unique(md[[lidx]]))-1)),
-                      domain = md[[lidx]], reverse = T)
-
+        pal <- colorBin(palette = "RdYlBu", domain = md[[lidx]], 
+                        bins = min(c(10,length(unique(md[[lidx]])))), reverse = T)
+        
+        StrokeOp <- matrix(.2,nrow(md),1)
+        StrokeOp[match(input$countries,md$name)] = 1
+        StrokeWgt <- matrix(1,nrow(md),1)
+        StrokeWgt[match(input$countries,md$name)] = 3
+          
         #lbl_text = label_map(input$layer)
       leafletProxy("mymap") %>%
           clearShapes() %>%
           addPolygons(
           data=md$geom,
           #color=afmap$SSA_color[1:46]
-          weight=1,
+          weight=StrokeWgt,
+          color= pal(md[[lidx]]),
+          opacity=StrokeOp,
           label = sprintf("<strong> %s </strong>
                   : %s",
                   as.character(md$name),
@@ -206,7 +207,6 @@ ui <- fluidPage(
           fillColor=pal(md[[lidx]]) 
           )
       })
-          
 
  ## Right now, the app does not incorporate the timeline option (which is implemented for cases below)
 
@@ -249,13 +249,25 @@ ui <- fluidPage(
       #tm_tmp = unique(pftrim$time)
       
       output$timeseries <- renderPlot({
+        lidx <- which(colnames(md)==input$layer)
+        
+        pal <- colorBin(palette = "RdYlBu", domain = md[[lidx]], 
+                        bins = min(c(10,length(unique(md[[lidx]])))), reverse = T)
         ts_tmp <- pftrim %>%
           select(time, country, input$layer) %>% #selecting time, country, and columns that are input layers
           filter(pftrim$country %in% input$countries) #filtering to keep the countries for the ones that are selected for input countries
+        
+        
+        
+        ##last value for each country will determine the color??
+        ts_last <- aggregate(ts_tmp, by=list(ts_tmp$country), FUN=last)
+        
+
         ggplot(data = ts_tmp,
                mapping = aes(x = time, group = country)) +
           aes_string(y = input$layer) +
-          geom_line() +
+          geom_line(aes(color=country)) +
+          scale_color_manual(values=pal(ts_last[[4]])) +
           theme(legend.position = "right") #legend not working
         
         
