@@ -21,9 +21,6 @@ if (!require("pacman")) {
 pkgs = c("dplyr", "sp", "sf", "ggplot2", "plotly", "tidyr") # package names
 pacman::p_load(pkgs, character.only = T)
 
-setwd(
-  "C:/Users/BCIcomputer01/Box Sync/Hershey_2020/COVID Modeling/HHH4/stsmodel-africa"
-)
 tmp = readRDS("tempdata.rds")
 # saveRDS(object = md, file.path(outputdir,"md.rds"))
 # saveRDS(object = pf, file.path(outputdir,"pf.rds"))
